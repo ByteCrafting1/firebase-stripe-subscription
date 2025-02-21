@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Auth Test</title>
+</head>
+<body>
+    <h2>Firebase Auth Test</h2>
+    
+    <!-- Signup Form -->
+    <div>
+        <h3>Sign Up</h3>
+        <input type="email" id="signupEmail" placeholder="Email">
+        <input type="password" id="signupPassword" placeholder="Password">
+        <button onclick="signup()">Sign Up</button>
+        <div id="signupStatus"></div>
+    </div>
+
+    <!-- Login Form -->
+    <div style="margin-top: 20px;">
+        <h3>Login</h3>
+        <input type="email" id="loginEmail" placeholder="Email">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div id="loginStatus"></div>
+    </div>
+
+    <!-- Test Functions -->
+    <div style="margin-top: 20px;">
+        <h3>Test Functions</h3>
+        <button onclick="testSubscription()" disabled id="subscriptionBtn">Create Subscription</button>
+        <div id="subscriptionStatus"></div>
+        
+        <button onclick="testPortal()" disabled id="portalBtn">Open Customer Portal</button>
+        <div id="portalStatus"></div>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, 
+            connectAuthEmulator,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFunctions, 
+            connectFunctionsEmulator,
+            httpsCallable 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
+
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: "",
+            measurementId: ""
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const functions = getFunctions(app);
+
+        // Connect to emulators
+        connectAuthEmulator(auth, "http://localhost:9099");
+        connectFunctionsEmulator(functions, "localhost", 5001);
+
+        // Make functions available globally
+        window.signup = async () => {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                console.log("Signed up:", userCredential.user);
+                document.getElementById('signupStatus').textContent = 'Signup successful!';
+                
+                // Enable function test buttons
+                document.getElementById('subscriptionBtn').disabled = false;
+                document.getElementById('portalBtn').disabled = false;
+            } catch (error) {
+                console.error("Signup error:", error);
+                document.getElementById('signupStatus').textContent = 'Signup failed: ' + error.message;
+            }
+        };
+
+        window.login = async () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log("Logged in:", userCredential.user);
+                document.getElementById('loginStatus').textContent = 'Login successful!';
+                
+                // Enable function test buttons
+                document.getElementById('subscriptionBtn').disabled = false;
+                document.getElementById('portalBtn').disabled = false;
+            } catch (error) {
+                console.error("Login error:", error);
+                document.getElementById('loginStatus').textContent = 'Login failed: ' + error.message;
+            }
+        };
+
+        window.testSubscription = async () => {
+            try {
+                const createSubscription = httpsCallable(functions, 'createSubscription');
+                const result = await createSubscription({
+                    priceId: 'price_test_123' // Your Stripe test price ID
+                });
+                console.log('Subscription result:', result.data);
+                document.getElementById('subscriptionStatus').textContent = 
+                    'Subscription created: ' + JSON.stringify(result.data);
+            } catch (error) {
+                console.error('Subscription error:', error);
+                document.getElementById('subscriptionStatus').textContent = 
+                    'Subscription error: ' + error.message;
+            }
+        };
+
+        window.testPortal = async () => {
+            try {
+                const createPortalSession = httpsCallable(functions, 'createCustomerPortalSession');
+                const result = await createPortalSession({
+                    returnUrl: window.location.origin
+                });
+                console.log('Portal result:', result.data);
+                window.location.href = result.data.url;
+            } catch (error) {
+                console.error('Portal error:', error);
+                document.getElementById('portalStatus').textContent = 
+                    'Portal error: ' + error.message;
+            }
+        };
+
+        // Listen for auth state changes
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                console.log('User is signed in:', user);
+                document.getElementById('subscriptionBtn').disabled = false;
+                document.getElementById('portalBtn').disabled = false;
+            } else {
+                console.log('No user is signed in');
+                document.getElementById('subscriptionBtn').disabled = true;
+                document.getElementById('portalBtn').disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
