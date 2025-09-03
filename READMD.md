@@ -57,7 +57,6 @@ To run the functions locally using the Firebase Emulator Suite:
 
 ### Deployment
 
-To deploy the functions to Firebase:
 
 ```bash
 firebase deploy --only functions
